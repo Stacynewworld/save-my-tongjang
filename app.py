@@ -9,7 +9,7 @@ import plotly.express as px
 # 기본 설정
 # -----------------------------
 st.set_page_config(
-    page_title="통장을 지켜라",
+    page_title="몽이 & 냥이 가계부",
     page_icon="🐾",
     layout="centered"
 )
@@ -26,7 +26,7 @@ NYANG = IMG_BASE_URL + "nyangi_basic.png"
 TOGETHER = IMG_BASE_URL + "together_smile.png"
 
 # -----------------------------
-# UI 스타일
+# 🎨 스타일 (폰트 최대 고정)
 # -----------------------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
@@ -37,6 +37,7 @@ html, body, [class*="css"] {
     background-color: #fffaf7;
 }
 
+/* 버튼 회색 (주황 제거) */
 .stButton>button {
     background: #f2f2f2 !important;
     color: #333 !important;
@@ -54,15 +55,16 @@ st.markdown("<h2 style='text-align:center;'>🐾 몽이 & 냥이 가계부</h2>"
 st.image(TOGETHER, width=90)
 
 # -----------------------------
-# 데이터 로딩
+# 데이터 로딩 (핵심 안정화)
 # -----------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df = pd.read_csv(CSV_URL)
 
-    # ⏰ 시간 제거
+    # ✔️ 시간 완전 제거 (핵심)
     df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce").dt.date
+
     df["금액"] = pd.to_numeric(df["금액"], errors="coerce").fillna(0).astype(int)
 
 except:
@@ -71,7 +73,7 @@ except:
 today = datetime.now().date()
 
 # -----------------------------
-# 입력
+# ➕ 입력 영역
 # -----------------------------
 st.subheader("➕ 지출 입력")
 
@@ -88,7 +90,7 @@ with col2:
 
     category = st.selectbox(
         "항목",
-        ["🍽️식비-외식","🛒식비-장보기","🏠생필품","🎨여가","🫟기타"]
+        ["🍱식비-외식","🛒식비-장보기","🏠생필품","🎸여가","✨기타"]
     )
 
     amount = st.number_input("금액", min_value=0, step=100)
@@ -114,27 +116,27 @@ if st.button("저장"):
         st.rerun()
 
 # -----------------------------
-# 💫 이번 달 요약
+# 📊 이번 달 요약
 # -----------------------------
 st.divider()
 
 this_month = datetime.now().strftime("%Y-%m")
 m_df = df[pd.to_datetime(df["날짜"]).dt.strftime("%Y-%m") == this_month]
 
-st.subheader("💫 이번 달")
+st.subheader("📊 이번 달")
 
 if not m_df.empty:
     st.metric("총 지출", f"{m_df['금액'].sum():,}원")
 
 # -----------------------------
-# 💡 분석 탭 (핵심)
+# 📊 분석 탭
 # -----------------------------
-st.subheader("💡 분석")
+st.subheader("📊 분석")
 
-tab1, tab2, tab3 = st.tabs(["📅 월별", "🏷️ 항목별", "📊 연간"])
+tab1, tab2, tab3 = st.tabs(["📈 월별", "🥧 항목별", "📅 연간"])
 
 # -----------------------------
-# 📅 월별 (최근 3개월)
+# 📈 월별 (최근 3개월)
 # -----------------------------
 with tab1:
     three_months = datetime.now() - relativedelta(months=2)
@@ -145,10 +147,12 @@ with tab1:
     month_df = tmp.groupby("월")["금액"].sum().reset_index()
 
     fig = px.bar(month_df, x="월", y="금액", text_auto=True)
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(font=dict(family="Jua"))
+
+    st.plotly_chart(fig, use_container_width=True, key="monthly_chart")
 
 # -----------------------------
-# 🏷️ 항목별 (이번 달)
+# 🥧 항목별 (이번 달)
 # -----------------------------
 with tab2:
     if not m_df.empty:
@@ -161,10 +165,12 @@ with tab2:
             hole=0.4
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(font=dict(family="Jua"))
+
+        st.plotly_chart(fig, use_container_width=True, key="category_chart")
 
 # -----------------------------
-# 📊 연간 (맨 오른쪽)
+# 📅 연간 (최근 1년)
 # -----------------------------
 with tab3:
     one_year = datetime.now() - relativedelta(years=1)
@@ -175,7 +181,9 @@ with tab3:
     year_df = y_df.groupby("월")["금액"].sum().reset_index()
 
     fig = px.bar(year_df, x="월", y="금액", text_auto=True)
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(font=dict(family="Jua"))
+
+    st.plotly_chart(fig, use_container_width=True, key="yearly_chart")
 
 # -----------------------------
 # 전체 내역
