@@ -6,12 +6,13 @@ from dateutil.relativedelta import relativedelta
 import plotly.express as px
 
 # -----------------------------
-# 앱 설정
+# 앱 기본 설정 (홈화면 이름/아이콘 핵심)
 # -----------------------------
 st.set_page_config(
-    page_title="몽이 & 냥이 가계부",
+    page_title="🐾 몽이 & 냥이 가계부",
     page_icon="🐾",
-    layout="centered"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
 CSV_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZdPg0pkzYqF7aYE/gviz/tq?tqx=out:csv&sheet=Sheet1"
@@ -23,36 +24,28 @@ NYANG = IMG_BASE_URL + "nyangi_basic.png"
 TOGETHER = IMG_BASE_URL + "together_smile.png"
 
 # -----------------------------
-# UI
+# 앱 타이틀 UI
 # -----------------------------
 st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-
-<style>
-html, body, [class*="css"] {
-    font-family: 'Jua', sans-serif !important;
-    background-color: #fffaf7;
-}
-.title {
-    font-size: 2.2rem;
-    text-align: center;
-    font-family: 'Jua', sans-serif;
-}
-</style>
+<div style="text-align:center; font-size:30px; font-weight:bold;">
+🐾 몽이 & 냥이 가계부
+</div>
+<div style="text-align:center; font-size:14px; color:gray; margin-bottom:10px;">
+우리 둘만의 귀여운 가계부 💕
+</div>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='title'>🐾 몽이 & 냥이 가계부</div>", unsafe_allow_html=True)
 st.image(TOGETHER, width=90)
 
 # -----------------------------
-# 데이터 로딩 (핵심 안정화)
+# 데이터 로딩 (완전 안정화)
 # -----------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df = pd.read_csv(CSV_URL)
 
-    # 🔥 핵심: 날짜 완전 방어 (datetime / 9998 / 시간 전부 제거)
+    # 🔥 핵심: 날짜 완전 정리 (9998 / 시간 / datetime 방지)
     df["날짜"] = (
         df["날짜"]
         .astype(str)
@@ -67,7 +60,7 @@ except:
     df = pd.DataFrame(columns=["날짜","항목","금액","작성자","메모"])
 
 # -----------------------------
-# 입력
+# 입력 영역
 # -----------------------------
 st.subheader("➕ 지출 입력")
 
@@ -80,15 +73,22 @@ with col3:
 
 with col2:
     date = st.date_input("날짜", datetime.now())
+
     category = st.selectbox(
         "항목",
         ["🍱식비-외식","🛒식비-장보기","🏠생필품","🎸여가","✨기타"]
     )
+
     amount = st.number_input("금액", min_value=0, step=100)
+
     user = st.radio("사용자", ["승은🐱","상준🐶"], horizontal=True)
+
     memo = st.text_input("메모")
 
-if st.button("저장"):
+# -----------------------------
+# 저장 (안정 버전)
+# -----------------------------
+if st.button("💾 저장하기"):
     if amount > 0:
         new_row = pd.DataFrame([{
             "날짜": date.strftime("%Y-%m-%d"),
@@ -100,29 +100,29 @@ if st.button("저장"):
 
         df2 = pd.concat([df, new_row], ignore_index=True)
 
-        # 🔥 안정 저장 (worksheet 제거)
+        # 🔥 안정 저장 방식
         conn.update(data=df2)
 
         st.success("저장 완료 💕")
         st.rerun()
 
 # -----------------------------
-# 이번 달
+# 이번 달 요약
 # -----------------------------
 st.divider()
 
 this_month = datetime.now().strftime("%Y-%m")
 m_df = df[df["날짜"].str[:7] == this_month]
 
-st.subheader("📊 이번 달 요약")
+st.subheader("📊 이번 달")
 
 if not m_df.empty:
     st.metric("총 지출", f"{m_df['금액'].sum():,}원")
 
 # -----------------------------
-# 분석
+# 분석 탭
 # -----------------------------
-st.subheader("📊 지출 분석")
+st.subheader("📊 분석")
 
 tab1, tab2, tab3, tab4 = st.tabs(["📈 월별(3개월)", "🥧 항목별", "📅 연간", "🗑️ 전체+삭제"])
 
@@ -130,9 +130,9 @@ tab1, tab2, tab3, tab4 = st.tabs(["📈 월별(3개월)", "🥧 항목별", "�
 # 📈 월별
 # -----------------------------
 with tab1:
-    three_months_ago = (datetime.now() - relativedelta(months=2)).strftime("%Y-%m")
+    three_months = (datetime.now() - relativedelta(months=2)).strftime("%Y-%m")
 
-    tmp = df[df["날짜"].str[:7] >= three_months_ago]
+    tmp = df[df["날짜"].str[:7] >= three_months]
 
     if not tmp.empty:
         month_df = tmp.groupby(tmp["날짜"].str[:7])["금액"].sum().reset_index()
@@ -140,7 +140,8 @@ with tab1:
 
         fig = px.bar(month_df, x="월", y="금액", text_auto=True)
         fig.update_xaxes(type="category")
-        st.plotly_chart(fig, use_container_width=True, key="m")
+        st.plotly_chart(fig, use_container_width=True, key="m_chart")
+
     else:
         st.info("데이터 없음")
 
@@ -152,7 +153,7 @@ with tab2:
         pie_df = m_df.groupby("항목")["금액"].sum().reset_index()
 
         fig = px.pie(pie_df, values="금액", names="항목", hole=0.4)
-        st.plotly_chart(fig, use_container_width=True, key="p")
+        st.plotly_chart(fig, use_container_width=True, key="p_chart")
     else:
         st.info("이번 달 데이터 없음")
 
@@ -160,9 +161,9 @@ with tab2:
 # 📅 연간
 # -----------------------------
 with tab3:
-    one_year_ago = (datetime.now() - relativedelta(years=1)).strftime("%Y-%m")
+    one_year = (datetime.now() - relativedelta(years=1)).strftime("%Y-%m")
 
-    tmp_y = df[df["날짜"].str[:7] >= one_year_ago]
+    tmp_y = df[df["날짜"].str[:7] >= one_year]
 
     if not tmp_y.empty:
         year_df = tmp_y.groupby(tmp_y["날짜"].str[:7])["금액"].sum().reset_index()
@@ -170,7 +171,7 @@ with tab3:
 
         fig = px.bar(year_df, x="월", y="금액", text_auto=True)
         fig.update_xaxes(type="category")
-        st.plotly_chart(fig, use_container_width=True, key="y")
+        st.plotly_chart(fig, use_container_width=True, key="y_chart")
     else:
         st.info("최근 1년 데이터 없음")
 
@@ -191,7 +192,7 @@ with tab4:
 
         st.dataframe(df2.drop(columns=["id"]), use_container_width=True)
 
-        if st.button("🗑️ 삭제"):
+        if st.button("🗑️ 삭제하기"):
             new_df = df2[df2["id"] != selected].drop(columns=["id"])
 
             conn.update(data=new_df)
