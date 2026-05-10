@@ -46,12 +46,9 @@ st.markdown("""
 
 st.markdown("<p class='title-style'>🐾 몽이 & 냥이 가계부</p>", unsafe_allow_html=True)
 
-# --- 메인 이미지 (수정된 포인트!) ---
-main_cols = st.columns(3) 
-# main_cols는 [1번칸, 2번칸, 3번칸] 이라는 '리스트'입니다. 
-# 그중 2번째 칸(인덱스 1)을 열어야 합니다.
-with main_cols: 
-    st.image(TOGETHER_IMAGES["미소"], use_container_width=True)
+# --- 메인 이미지 (with 문 제거 버전) ---
+col_l, col_c, col_r = st.columns(3)
+col_c.image(TOGETHER_IMAGES["미소"], use_container_width=True)
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -67,22 +64,20 @@ today = datetime.now()
 three_months_ago = (today - relativedelta(months=2)).replace(day=1)
 filtered_df = df[df['날짜'] >= three_months_ago].sort_values("날짜", ascending=False)
 
-# --- 1. 입력 섹션 (수정된 포인트!) ---
+# --- 1. 입력 섹션 ---
 with st.expander("➕ 새로운 지출 기록하기", expanded=False):
-    input_cols = st.columns(3)
+    # with 문 대신 변수로 직접 접근하여 에러 가능성 차단
+    c1, c2, c3 = st.columns()
     
-    with input_cols: # 첫 번째 칸에 몽이
-        st.image(MONG_IMAGES["생각"], use_container_width=True)
-        
-    with input_cols: # 세 번째 칸에 냥이
-        st.image(NYANG_IMAGES["기본"], use_container_width=True)
+    c1.image(MONG_IMAGES["생각"], use_container_width=True)
+    c3.image(NYANG_IMAGES["기본"], use_container_width=True)
     
-    with input_cols: # 가운데 칸에 입력창
-        date = st.date_input("날짜", datetime.now())
-        category = st.selectbox("항목", ["🍱식비-외식", "🛒식비-장보기", "🏠생필품", "🎸여가", "✨기타"])
-        amount = st.number_input("금액 (원)", min_value=0, step=100)
-        user = st.radio("누가 썼나요?", ["승은(냥이)🐱", "상준(몽이)🐶"], horizontal=True)
-        memo = st.text_input("메모")
+    # 입력창들
+    date = c2.date_input("날짜", datetime.now())
+    category = c2.selectbox("항목", ["🍱식비-외식", "🛒식비-장보기", "🏠생필품", "🎸여가", "✨기타"])
+    amount = c2.number_input("금액 (원)", min_value=0, step=100)
+    user = c2.radio("누가 썼나요?", ["승은(냥이)🐱", "상준(몽이)🐶"], horizontal=True)
+    memo = c2.text_input("메모")
 
     if st.button("사랑으로 저장하기"):
         if amount > 0:
@@ -118,5 +113,4 @@ with tab_monthly:
         st.plotly_chart(fig_p, use_container_width=True)
 
 with tab_all:
-    # 전체 내역 편집 기능
     st.data_editor(filtered_df, use_container_width=True, num_rows="dynamic")
