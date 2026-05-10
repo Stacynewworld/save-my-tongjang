@@ -11,10 +11,9 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZ
 # --- 앱 디자인 설정 ---
 st.set_page_config(page_title="몽이 & 냥이 가계부", page_icon="🐾", layout="centered")
 
-# [필독] 본인의 GitHub 아이디와 저장소 이름으로 경로를 정확히 수정해주세요!
+# [필독] GitHub 아이디와 저장소 이름으로 수정 필수!
 IMG_BASE_URL = "https://raw.githubusercontent.com/[너의아이디]/[저장소이름]/main/characters/"
 
-# 파일명을 실제 GitHub에 올린 이름으로 정확히 매칭해주세요.
 MONG_IMAGES = {
     "기본": IMG_BASE_URL + "img_7281.png",
     "웃음": IMG_BASE_URL + "img_7282.png",
@@ -36,7 +35,6 @@ TOGETHER_IMAGES = {
     "잘됐다": IMG_BASE_URL + "img_7292.png",
 }
 
-# CSS (귀여운 폰트 및 스타일)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap');
@@ -46,15 +44,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 제목 ---
 st.markdown("<p class='title-style'>🐾 몽이 & 냥이 가계부</p>", unsafe_allow_html=True)
 
-# 메인 이미지 (가장 안전한 방식으로 배치)
-main_cols = st.columns(3) # 숫자로만 입력 (가장 안전)
-with main_cols:
+# --- 메인 이미지 (수정된 포인트!) ---
+main_cols = st.columns(3) 
+# main_cols는 [1번칸, 2번칸, 3번칸] 이라는 '리스트'입니다. 
+# 그중 2번째 칸(인덱스 1)을 열어야 합니다.
+with main_cols: 
     st.image(TOGETHER_IMAGES["미소"], use_container_width=True)
 
-# 데이터 연결
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
@@ -69,16 +67,17 @@ today = datetime.now()
 three_months_ago = (today - relativedelta(months=2)).replace(day=1)
 filtered_df = df[df['날짜'] >= three_months_ago].sort_values("날짜", ascending=False)
 
-# --- 1. 입력 섹션 ---
+# --- 1. 입력 섹션 (수정된 포인트!) ---
 with st.expander("➕ 새로운 지출 기록하기", expanded=False):
-    # 인덱스 방식으로 접근하여 spec 에러 방지
     input_cols = st.columns(3)
-    with input_cols:
+    
+    with input_cols: # 첫 번째 칸에 몽이
         st.image(MONG_IMAGES["생각"], use_container_width=True)
-    with input_cols:
+        
+    with input_cols: # 세 번째 칸에 냥이
         st.image(NYANG_IMAGES["기본"], use_container_width=True)
     
-    with input_cols:
+    with input_cols: # 가운데 칸에 입력창
         date = st.date_input("날짜", datetime.now())
         category = st.selectbox("항목", ["🍱식비-외식", "🛒식비-장보기", "🏠생필품", "🎸여가", "✨기타"])
         amount = st.number_input("금액 (원)", min_value=0, step=100)
@@ -119,4 +118,5 @@ with tab_monthly:
         st.plotly_chart(fig_p, use_container_width=True)
 
 with tab_all:
+    # 전체 내역 편집 기능
     st.data_editor(filtered_df, use_container_width=True, num_rows="dynamic")
