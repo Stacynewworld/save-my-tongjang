@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 import plotly.express as px
 
 # -----------------------------
-# 앱 설정
+# 기본 설정
 # -----------------------------
 st.set_page_config(
     page_title="몽이 & 냥이 가계부",
@@ -26,7 +26,7 @@ NYANG = IMG_BASE_URL + "nyangi_basic.png"
 TOGETHER = IMG_BASE_URL + "together_smile.png"
 
 # -----------------------------
-# UI (폰트 강제)
+# UI
 # -----------------------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
@@ -53,27 +53,27 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------
-# 타이틀
-# -----------------------------
 st.markdown("<div class='title'>🐾 몽이 & 냥이 가계부</div>", unsafe_allow_html=True)
 st.image(TOGETHER, width=90)
 
 # -----------------------------
-# 데이터 로딩 (안정 버전)
+# 데이터 로딩 (🔥 핵심 수정)
 # -----------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df = pd.read_csv(CSV_URL)
 
-    # ✔️ 날짜 완전 고정 (시간 제거)
-    df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce").dt.strftime("%Y-%m-%d")
+    # ✔️ 핵심: datetime 원본 따로 유지
+    df["날짜_raw"] = pd.to_datetime(df["날짜"], errors="coerce")
+
+    # ✔️ 화면 표시용
+    df["날짜"] = df["날짜_raw"].dt.strftime("%Y-%m-%d")
 
     df["금액"] = pd.to_numeric(df["금액"], errors="coerce").fillna(0).astype(int)
 
 except:
-    df = pd.DataFrame(columns=["날짜","항목","금액","작성자","메모"])
+    df = pd.DataFrame(columns=["날짜","날짜_raw","항목","금액","작성자","메모"])
 
 today = datetime.now().date()
 
@@ -125,9 +125,9 @@ if st.button("저장"):
 # -----------------------------
 st.divider()
 
-df_dt = pd.to_datetime(df["날짜"])
 this_month = datetime.now().strftime("%Y-%m")
-m_df = df[df_dt.dt.strftime("%Y-%m") == this_month]
+
+m_df = df[df["날짜_raw"].dt.strftime("%Y-%m") == this_month]
 
 st.subheader("📊 이번 달")
 
@@ -142,16 +142,14 @@ st.subheader("📊 분석")
 tab1, tab2, tab3 = st.tabs(["📈 월별", "🥧 항목별", "📅 연간"])
 
 # -----------------------------
-# 📈 월별 (최근 3개월 정확 버전)
+# 📈 월별 (최근 3개월)
 # -----------------------------
 with tab1:
     three_months_ago = datetime.now() - relativedelta(months=2)
 
-    tmp = df.copy()
-    tmp["날짜_dt"] = pd.to_datetime(tmp["날짜"], errors="coerce")
+    tmp = df[df["날짜_raw"] >= three_months_ago].copy()
 
-    tmp = tmp[tmp["날짜_dt"] >= three_months_ago]
-    tmp["월"] = tmp["날짜_dt"].dt.strftime("%Y-%m")
+    tmp["월"] = tmp["날짜_raw"].dt.strftime("%Y-%m")
 
     month_df = tmp.groupby("월")["금액"].sum().reset_index()
     month_df = month_df.sort_values("월")
@@ -188,11 +186,9 @@ with tab2:
 with tab3:
     one_year_ago = datetime.now() - relativedelta(years=1)
 
-    y_df = df.copy()
-    y_df["날짜_dt"] = pd.to_datetime(y_df["날짜"], errors="coerce")
+    y_df = df[df["날짜_raw"] >= one_year_ago].copy()
 
-    y_df = y_df[y_df["날짜_dt"] >= one_year_ago]
-    y_df["월"] = y_df["날짜_dt"].dt.strftime("%Y-%m")
+    y_df["월"] = y_df["날짜_raw"].dt.strftime("%Y-%m")
 
     year_df = y_df.groupby("월")["금액"].sum().reset_index()
 
@@ -207,7 +203,7 @@ with tab3:
 st.subheader("📋 전체 내역")
 
 st.data_editor(
-    df.sort_values("날짜", ascending=False),
+    df.sort_values("날짜_raw", ascending=False),
     use_container_width=True,
     num_rows="dynamic"
 )
