@@ -19,7 +19,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZ
 
 IMG_BASE_URL = "https://raw.githubusercontent.com/Stacynewworld/save-my-tongjang/main/Characters/"
 
-MONG = IMG_BASE_URL + "mongi_think.png"
+MONG = IMG_BASE_URL + "mongi_basic.png"
 NYANG = IMG_BASE_URL + "nyangi_basic.png"
 TOGETHER = IMG_BASE_URL + "together_smile.png"
 
@@ -107,7 +107,7 @@ with col2:
     date = st.date_input("날짜", datetime.now())
     category = st.selectbox(
         "항목",
-        ["🍱식비-외식","🛒식비-장보기","🏠생필품","🎸여가","✨기타"]
+        ["🍽️식비-외식","🛒식비-장보기","🏠생필품","🎨여가","🫟기타"]
     )
     amount = st.number_input("금액", min_value=0, step=100)
     user = st.radio("사용자", ["승은🐱","상준🐶"], horizontal=True)
@@ -137,7 +137,7 @@ st.divider()
 this_month = datetime.now().strftime("%Y-%m")
 m_df = df[df["날짜"].str[:7] == this_month]
 
-st.subheader("📊 이번 달")
+st.subheader("📅 이번 달")
 
 if not m_df.empty:
     st.metric("총 지출", f"{m_df['금액'].sum():,}원")
@@ -145,12 +145,12 @@ if not m_df.empty:
 # -----------------------------
 # 분석
 # -----------------------------
-st.subheader("📊 분석")
+st.subheader("💰 분석")
 
-tab1, tab2, tab3, tab4 = st.tabs(["📈 월별(3개월)", "🥧 항목별", "📅 연간", "🗑️ 전체+삭제"])
+tab1, tab2, tab3, tab4 = st.tabs(["📅 월별(3개월)", "🏷️ 항목별", "📊 연간", "🗑️ 전체내역"])
 
 # -----------------------------
-# 📈 월별
+# 📅 월별
 # -----------------------------
 with tab1:
     three_months = (datetime.now() - relativedelta(months=2)).strftime("%Y-%m")
@@ -169,7 +169,7 @@ with tab1:
         st.info("데이터 없음")
 
 # -----------------------------
-# 🥧 항목별
+# 🏷️ 항목별
 # -----------------------------
 with tab2:
     if not m_df.empty:
@@ -182,7 +182,7 @@ with tab2:
         st.info("이번 달 데이터 없음")
 
 # -----------------------------
-# 📅 연간
+# 📊 연간
 # -----------------------------
 with tab3:
     one_year = (datetime.now() - relativedelta(years=1)).strftime("%Y-%m")
