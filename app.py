@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 import plotly.express as px
 
 # -----------------------------
-# 기본 설정
+# 앱 설정
 # -----------------------------
 st.set_page_config(
     page_title="몽이 & 냥이 가계부",
@@ -26,7 +26,7 @@ NYANG = IMG_BASE_URL + "nyangi_basic.png"
 TOGETHER = IMG_BASE_URL + "together_smile.png"
 
 # -----------------------------
-# 🎨 스타일 (폰트 최대 고정)
+# UI (폰트 강제)
 # -----------------------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
@@ -37,7 +37,6 @@ html, body, [class*="css"] {
     background-color: #fffaf7;
 }
 
-/* 버튼 회색 (주황 제거) */
 .stButton>button {
     background: #f2f2f2 !important;
     color: #333 !important;
@@ -45,25 +44,31 @@ html, body, [class*="css"] {
     border: 1px solid #ddd;
     height: 3rem;
 }
+
+.title {
+    font-family: 'Jua', sans-serif !important;
+    text-align: center;
+    font-size: 2.2rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------
 # 타이틀
 # -----------------------------
-st.markdown("<h2 style='text-align:center;'>🐾 몽이 & 냥이 가계부</h2>", unsafe_allow_html=True)
+st.markdown("<div class='title'>🐾 몽이 & 냥이 가계부</div>", unsafe_allow_html=True)
 st.image(TOGETHER, width=90)
 
 # -----------------------------
-# 데이터 로딩 (핵심 안정화)
+# 데이터 로딩 (안정 버전)
 # -----------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df = pd.read_csv(CSV_URL)
 
-    # ✔️ 시간 완전 제거 (핵심)
-    df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce").dt.date
+    # ✔️ 날짜 완전 고정 (시간 제거)
+    df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce").dt.strftime("%Y-%m-%d")
 
     df["금액"] = pd.to_numeric(df["금액"], errors="coerce").fillna(0).astype(int)
 
@@ -73,7 +78,7 @@ except:
 today = datetime.now().date()
 
 # -----------------------------
-# ➕ 입력 영역
+# 입력
 # -----------------------------
 st.subheader("➕ 지출 입력")
 
@@ -102,7 +107,7 @@ with col2:
 if st.button("저장"):
     if amount > 0:
         new_row = pd.DataFrame([{
-            "날짜": date,
+            "날짜": date.strftime("%Y-%m-%d"),
             "항목": category,
             "금액": amount,
             "작성자": user,
@@ -116,12 +121,13 @@ if st.button("저장"):
         st.rerun()
 
 # -----------------------------
-# 📊 이번 달 요약
+# 이번 달
 # -----------------------------
 st.divider()
 
+df_dt = pd.to_datetime(df["날짜"])
 this_month = datetime.now().strftime("%Y-%m")
-m_df = df[pd.to_datetime(df["날짜"]).dt.strftime("%Y-%m") == this_month]
+m_df = df[df_dt.dt.strftime("%Y-%m") == this_month]
 
 st.subheader("📊 이번 달")
 
@@ -129,22 +135,26 @@ if not m_df.empty:
     st.metric("총 지출", f"{m_df['금액'].sum():,}원")
 
 # -----------------------------
-# 📊 분석 탭
+# 분석
 # -----------------------------
 st.subheader("📊 분석")
 
 tab1, tab2, tab3 = st.tabs(["📈 월별", "🥧 항목별", "📅 연간"])
 
 # -----------------------------
-# 📈 월별 (최근 3개월)
+# 📈 월별 (최근 3개월 정확 버전)
 # -----------------------------
 with tab1:
-    three_months = datetime.now() - relativedelta(months=2)
+    three_months_ago = datetime.now() - relativedelta(months=2)
 
-    tmp = df[pd.to_datetime(df["날짜"]) >= three_months].copy()
-    tmp["월"] = pd.to_datetime(tmp["날짜"]).dt.strftime("%Y-%m")
+    tmp = df.copy()
+    tmp["날짜_dt"] = pd.to_datetime(tmp["날짜"], errors="coerce")
+
+    tmp = tmp[tmp["날짜_dt"] >= three_months_ago]
+    tmp["월"] = tmp["날짜_dt"].dt.strftime("%Y-%m")
 
     month_df = tmp.groupby("월")["금액"].sum().reset_index()
+    month_df = month_df.sort_values("월")
 
     fig = px.bar(month_df, x="월", y="금액", text_auto=True)
     fig.update_layout(font=dict(family="Jua"))
@@ -152,16 +162,19 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True, key="monthly_chart")
 
 # -----------------------------
-# 🥧 항목별 (이번 달)
+# 🥧 항목별 (이번 달 + 월 표시)
 # -----------------------------
 with tab2:
     if not m_df.empty:
-        pie_df = m_df.groupby("항목")["금액"].sum().reset_index()
+        tmp = m_df.copy()
+        tmp["월항목"] = this_month + " " + tmp["항목"]
+
+        pie_df = tmp.groupby("월항목")["금액"].sum().reset_index()
 
         fig = px.pie(
             pie_df,
             values="금액",
-            names="항목",
+            names="월항목",
             hole=0.4
         )
 
@@ -173,10 +186,13 @@ with tab2:
 # 📅 연간 (최근 1년)
 # -----------------------------
 with tab3:
-    one_year = datetime.now() - relativedelta(years=1)
+    one_year_ago = datetime.now() - relativedelta(years=1)
 
-    y_df = df[pd.to_datetime(df["날짜"]) >= one_year].copy()
-    y_df["월"] = pd.to_datetime(y_df["날짜"]).dt.strftime("%Y-%m")
+    y_df = df.copy()
+    y_df["날짜_dt"] = pd.to_datetime(y_df["날짜"], errors="coerce")
+
+    y_df = y_df[y_df["날짜_dt"] >= one_year_ago]
+    y_df["월"] = y_df["날짜_dt"].dt.strftime("%Y-%m")
 
     year_df = y_df.groupby("월")["금액"].sum().reset_index()
 
