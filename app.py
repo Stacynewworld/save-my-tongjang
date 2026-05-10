@@ -49,24 +49,20 @@ st.markdown("<div class='title'>🐾 몽이 & 냥이 가계부</div>", unsafe_al
 st.image(TOGETHER, width=90)
 
 # -----------------------------
-# 🔥 핵심: 날짜 구조 완전 고정
+# 데이터 로딩 (🔥 핵심: string 고정)
 # -----------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df = pd.read_csv(CSV_URL)
 
-    # ✔️ 절대 원칙:
-    # 1. datetime은 "한 번만"
-    # 2. 표시용은 따로 문자열
-    df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
-
-    df["날짜_str"] = df["날짜"].dt.strftime("%Y-%m-%d")
+    # ✔️ 핵심: datetime 금지, 무조건 문자열
+    df["날짜"] = df["날짜"].astype(str).str.split(" ").str[0]
 
     df["금액"] = pd.to_numeric(df["금액"], errors="coerce").fillna(0).astype(int)
 
 except:
-    df = pd.DataFrame(columns=["날짜","날짜_str","항목","금액","작성자","메모"])
+    df = pd.DataFrame(columns=["날짜","항목","금액","작성자","메모"])
 
 # -----------------------------
 # 입력
@@ -98,7 +94,7 @@ with col2:
 if st.button("저장"):
     if amount > 0:
         new_row = pd.DataFrame([{
-            "날짜": pd.to_datetime(date),
+            "날짜": date.strftime("%Y-%m-%d"),
             "항목": category,
             "금액": amount,
             "작성자": user,
@@ -118,7 +114,7 @@ st.divider()
 
 this_month = datetime.now().strftime("%Y-%m")
 
-m_df = df[df["날짜"].dt.strftime("%Y-%m") == this_month]
+m_df = df[df["날짜"].str[:7] == this_month]
 
 st.subheader("📊 이번 달")
 
@@ -133,17 +129,15 @@ st.subheader("📊 분석")
 tab1, tab2, tab3 = st.tabs(["📈 월별", "🥧 항목별", "📅 연간"])
 
 # -----------------------------
-# 📈 월별 (완전 안정)
+# 📈 월별 (최근 3개월)
 # -----------------------------
 with tab1:
-    three_months_ago = datetime.now() - relativedelta(months=2)
+    three_months = (datetime.now() - relativedelta(months=2)).strftime("%Y-%m")
 
-    tmp = df[df["날짜"] >= three_months_ago].copy()
+    tmp = df[df["날짜"].str[:7] >= three_months].copy()
 
-    tmp["월"] = tmp["날짜"].dt.strftime("%Y-%m")
-
-    month_df = tmp.groupby("월")["금액"].sum().reset_index()
-    month_df = month_df.sort_values("월")
+    month_df = tmp.groupby(tmp["날짜"].str[:7])["금액"].sum().reset_index()
+    month_df.columns = ["월", "금액"]
 
     fig = px.bar(month_df, x="월", y="금액", text_auto=True)
     st.plotly_chart(fig, use_container_width=True, key="monthly_chart")
@@ -171,13 +165,12 @@ with tab2:
 # 📅 연간
 # -----------------------------
 with tab3:
-    one_year_ago = datetime.now() - relativedelta(years=1)
+    one_year = (datetime.now() - relativedelta(years=1)).strftime("%Y-%m")
 
-    y_df = df[df["날짜"] >= one_year_ago].copy()
+    y_df = df[df["날짜"].str[:7] >= one_year].copy()
 
-    y_df["월"] = y_df["날짜"].dt.strftime("%Y-%m")
-
-    year_df = y_df.groupby("월")["금액"].sum().reset_index()
+    year_df = y_df.groupby(y_df["날짜"].str[:7])["금액"].sum().reset_index()
+    year_df.columns = ["월", "금액"]
 
     fig = px.bar(year_df, x="월", y="금액", text_auto=True)
     st.plotly_chart(fig, use_container_width=True, key="yearly_chart")
