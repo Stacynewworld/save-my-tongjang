@@ -41,7 +41,6 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=False):
         amount = st.number_input("금액 (원)", min_value=0, step=100)
         user = st.radio("누가 썼나요?", ["승은", "상준"], horizontal=True)
     
-    # 메모 칸 상시 활성화
     memo = st.text_input("메모 (어디에 썼나요?)")
 
     if st.button("내역 저장하기", use_container_width=True):
@@ -64,7 +63,6 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=False):
 st.divider()
 st.markdown(f"### 📊 지출 리포트 (최근 3개월)")
 
-# 탭 구성 (그래프 탭을 앞쪽으로 배치)
 tab_yearly, tab_monthly, tab_all, tab_food, tab_life, tab_play = st.tabs([
     "📅 연간 현황", "📈 월간 비중", "📋 전체 내역", "🍱 식비", "🏠 생필품", "🎸 여가"
 ])
@@ -76,12 +74,16 @@ with tab_yearly:
     yearly_df = df[df['날짜'] >= one_year_ago].copy()
     
     if not yearly_df.empty:
-        yearly_df['월'] = yearly_df['날짜'].dt.strftime('%Y-%m')
+        # X축을 깔끔하게 '2026-05' 형식의 문자열로 변환
+        yearly_df['월'] = yearly_df['날짜'].dt.to_period('M').astype(str)
         monthly_total = yearly_df.groupby('월')['금액'].sum().reset_index()
         
         fig_bar = px.bar(monthly_total, x='월', y='금액', 
                          text_auto=',.0f', 
                          color_discrete_sequence=['#FF4B4B'])
+        
+        # X축이 시간 순서대로 텍스트 기반으로 표시되도록 강제 설정
+        fig_bar.update_xaxes(type='category')
         fig_bar.update_layout(yaxis_title="금액 (원)", xaxis_title="월", showlegend=False)
         st.plotly_chart(fig_bar, use_container_width=True)
     else:
@@ -105,8 +107,7 @@ with tab_monthly:
 
 # --- 📋 전체 내역 (수정 및 삭제 관리) ---
 with tab_all:
-    st.info("💡 수정 후 아래 '변경사항 반영하기' 버튼을 꼭 눌러주세요. 행 삭제는 왼쪽 클릭 후 Del키!")
-    # 편집 가능한 데이터프레임
+    st.info("💡 행 선택 후 Del키로 삭제 -> 아래 버튼 클릭!")
     edited_df = st.data_editor(
         filtered_df, 
         use_container_width=True, 
@@ -116,19 +117,19 @@ with tab_all:
     
     if st.button("💾 변경사항 반영하기", type="primary", use_container_width=True):
         try:
-            # 3개월 이전 데이터(보존) + 편집된 데이터(수정본) 합치기
+            # 3개월 이전 데이터 + 편집된 데이터 합치기
             old_data = df[df['날짜'] < three_months_ago]
             final_df = pd.concat([old_data, edited_df], ignore_index=True)
-            # 날짜 형식 문자열로 통일하여 업데이트
+            # 날짜 형식을 시트 저장용 문자열로 변환
             final_df['날짜'] = final_df['날짜'].dt.strftime('%Y-%m-%d')
             
             conn.update(worksheet="Sheet1", data=final_df)
-            st.success("✅ 구글 시트에 성공적으로 반영되었습니다!")
+            st.success("✅ 구글 시트에 반영되었습니다!")
             st.rerun()
         except Exception as e:
             st.error(f"반영 중 오류 발생: {e}")
 
-# --- 카테고리별 상세 내역 (최근 3개월 기준) ---
+# --- 카테고리별 상세 내역 (최근 3개월) ---
 with tab_food:
     f_df = filtered_df[filtered_df['항목'].str.contains("식비", na=False)]
     st.metric("식비 합계", f"{f_df['금액'].sum():,.0f}원")
