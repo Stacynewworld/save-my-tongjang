@@ -15,14 +15,20 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 # 데이터 불러오기 함수
 def get_data():
-    # 시트에서 최신 데이터 가져오기 (pandas 직접 읽기보다 conn 사용 권장)
-    data = conn.read(spreadsheet=CSV_URL, usecols=)
-    data['금액'] = pd.to_numeric(data['금액'], errors='coerce').fillna(0)
+    # usecols를 수정하여 오류 해결
+    data = conn.read(spreadsheet=CSV_URL)
+    # 데이터가 비어있을 경우를 대비해 컬럼 강제 지정
+    if data.empty:
+        data = pd.DataFrame(columns=["날짜", "항목", "금액", "작성자", "메모"])
+    
+    # 금액 컬럼 숫자 변환 및 날짜 형식 정리
+    data['금액'] = pd.to_numeric(data['금액'], errors='coerce').fillna(0).astype(int)
     return data
 
+# 최신 데이터 로드
 df = get_data()
 
-# 1. 입력 섹션 (기존과 동일)
+# 1. 입력 섹션
 with st.expander("➕ 새로운 지출 기록하기", expanded=False):
     col1, col2 = st.columns(2)
     with col1:
@@ -32,7 +38,7 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=False):
         amount = st.number_input("금액 (원)", min_value=0, step=100)
         user = st.radio("누가 썼나요?", ["승은", "상준"], horizontal=True)
     
-    memo = st.text_input("메모 (상세 내용을 적어주세요)")
+    memo = st.text_input("메모 (어디에 썼나요?)")
 
     if st.button("내역 저장하기", use_container_width=True):
         if amount > 0:
@@ -47,39 +53,42 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=False):
             conn.update(worksheet="Sheet1", data=updated_df)
             st.success("✅ 저장되었습니다!")
             st.rerun()
+        else:
+            st.warning("금액을 입력해주세요.")
 
 # 2. 조회 및 편집/삭제 섹션
 st.divider()
 st.markdown("### 📊 지출 리포트 및 관리")
-st.info("💡 표에서 내용을 수정하거나 왼쪽 체크박스를 눌러 행을 삭제(Del키)한 후 아래 '변경사항 반영하기'를 눌러주세요.")
 
 tab_all, tab_food, tab_life, tab_play, tab_etc = st.tabs(["전체 관리", "식비", "생필품", "여가", "기타"])
 
 with tab_all:
-    # st.data_editor를 사용하여 직접 수정 및 삭제 기능 제공
+    st.write(f"💰 **현재 총 지출: {df['금액'].sum():,.0f}원**")
+    
+    # 데이터 에디터: 여기서 수정하거나 행을 선택해 Del 키로 삭제 가능
     edited_df = st.data_editor(
         df, 
         use_container_width=True,
-        num_rows="dynamic", # 행 추가/삭제 활성화
+        num_rows="dynamic", # 행 추가/삭제 가능하게 설정
         column_config={
             "금액": st.column_config.NumberColumn(format="%d원"),
-            "날짜": st.column_config.DateColumn()
+            "날짜": st.column_config.TextColumn() # 날짜 편집 편의를 위해 텍스트로 유지
         },
-        key="data_editor"
+        key="main_editor"
     )
 
-    # 변경 사항이 있을 때만 버튼 표시
-    if st.button("💾 변경사항 반영하기 (삭제/수정)", type="primary", use_container_width=True):
-        conn.update(worksheet="Sheet1", data=edited_df)
-        st.success("✅ 구글 시트에 반영되었습니다!")
-        st.rerun()
+    # 데이터가 변경되었는지 확인 후 저장 버튼 표시
+    if st.button("💾 변경사항 최종 반영하기", type="primary", use_container_width=True):
+        try:
+            conn.update(worksheet="Sheet1", data=edited_df)
+            st.success("✅ 구글 시트에 성공적으로 반영되었습니다!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"저장 중 오류가 발생했습니다: {e}")
 
-    st.write(f"💰 **현재 총 지출: {edited_df['금액'].sum():,.0f}원**")
-
-# 나머지 탭은 조회 전용 (기존과 동일)
+# 나머지 탭 (필터링된 결과 확인용)
 with tab_food:
-    food_df = df[df['항목'].str.contains("식비", na=False)]
-    st.dataframe(food_df, use_container_width=True)
+    st.dataframe(df[df['항목'].str.contains("식비", na=False)], use_container_width=True)
 
 with tab_life:
     st.dataframe(df[df['항목'] == "생필품"], use_container_width=True)
