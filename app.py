@@ -14,9 +14,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# -----------------------------
-# 데이터
-# -----------------------------
 CSV_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZdPg0pkzYqF7aYE/gviz/tq?tqx=out:csv&sheet=Sheet1"
 
 IMG_BASE_URL = "https://raw.githubusercontent.com/Stacynewworld/save-my-tongjang/main/Characters/"
@@ -38,9 +35,9 @@ html, body, [class*="css"] {
 }
 
 .title {
-    font-family: 'Jua', sans-serif !important;
-    text-align: center;
     font-size: 2.2rem;
+    text-align: center;
+    font-family: 'Jua', sans-serif;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -49,14 +46,14 @@ st.markdown("<div class='title'>🐾 몽이 & 냥이 가계부</div>", unsafe_al
 st.image(TOGETHER, width=90)
 
 # -----------------------------
-# 데이터 로딩 (🔥 핵심: string 고정)
+# 데이터 로딩 (string 고정)
 # -----------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df = pd.read_csv(CSV_URL)
 
-    # ✔️ 핵심: datetime 금지, 무조건 문자열
+    # ✔️ 날짜는 무조건 문자열 (00:00:00 완전 차단)
     df["날짜"] = df["날짜"].astype(str).str.split(" ").str[0]
 
     df["금액"] = pd.to_numeric(df["금액"], errors="coerce").fillna(0).astype(int)
@@ -113,7 +110,6 @@ if st.button("저장"):
 st.divider()
 
 this_month = datetime.now().strftime("%Y-%m")
-
 m_df = df[df["날짜"].str[:7] == this_month]
 
 st.subheader("📊 이번 달")
@@ -126,24 +122,23 @@ if not m_df.empty:
 # -----------------------------
 st.subheader("📊 분석")
 
-tab1, tab2, tab3 = st.tabs(["📈 월별", "🥧 항목별", "📅 연간"])
+tab1, tab2, tab3, tab4 = st.tabs(["📈 월별", "🥧 항목별", "📅 연간", "🗑️ 전체+삭제"])
 
 # -----------------------------
-# 📈 월별 (최근 3개월)
+# 📈 월별 (3개월)
 # -----------------------------
 with tab1:
     three_months = (datetime.now() - relativedelta(months=2)).strftime("%Y-%m")
-
-    tmp = df[df["날짜"].str[:7] >= three_months].copy()
+    tmp = df[df["날짜"].str[:7] >= three_months]
 
     month_df = tmp.groupby(tmp["날짜"].str[:7])["금액"].sum().reset_index()
     month_df.columns = ["월", "금액"]
 
     fig = px.bar(month_df, x="월", y="금액", text_auto=True)
-    st.plotly_chart(fig, use_container_width=True, key="monthly_chart")
+    st.plotly_chart(fig, use_container_width=True, key="m")
 
 # -----------------------------
-# 🥧 항목별 (이번 달)
+# 🥧 항목별
 # -----------------------------
 with tab2:
     if not m_df.empty:
@@ -152,14 +147,8 @@ with tab2:
 
         pie_df = tmp.groupby("월항목")["금액"].sum().reset_index()
 
-        fig = px.pie(
-            pie_df,
-            values="금액",
-            names="월항목",
-            hole=0.4
-        )
-
-        st.plotly_chart(fig, use_container_width=True, key="category_chart")
+        fig = px.pie(pie_df, values="금액", names="월항목", hole=0.4)
+        st.plotly_chart(fig, use_container_width=True, key="p")
 
 # -----------------------------
 # 📅 연간
@@ -167,21 +156,33 @@ with tab2:
 with tab3:
     one_year = (datetime.now() - relativedelta(years=1)).strftime("%Y-%m")
 
-    y_df = df[df["날짜"].str[:7] >= one_year].copy()
+    y_df = df[df["날짜"].str[:7] >= one_year]
 
     year_df = y_df.groupby(y_df["날짜"].str[:7])["금액"].sum().reset_index()
     year_df.columns = ["월", "금액"]
 
     fig = px.bar(year_df, x="월", y="금액", text_auto=True)
-    st.plotly_chart(fig, use_container_width=True, key="yearly_chart")
+    st.plotly_chart(fig, use_container_width=True, key="y")
 
 # -----------------------------
-# 전체 내역
+# 🗑️ 삭제 기능
 # -----------------------------
-st.subheader("📋 전체 내역")
+with tab4:
+    st.subheader("📋 전체 내역 (삭제 가능)")
 
-st.data_editor(
-    df.sort_values("날짜", ascending=False),
-    use_container_width=True,
-    num_rows="dynamic"
-)
+    df2 = df.copy().reset_index().rename(columns={"index": "id"})
+
+    selected = st.selectbox(
+        "삭제할 항목",
+        df2["id"].tolist(),
+        format_func=lambda x: f"{df2[df2['id']==x]['날짜'].values[0]} / {df2[df2['id']==x]['항목'].values[0]} / {df2[df2['id']==x]['금액'].values[0]}원"
+    )
+
+    st.dataframe(df2.drop(columns=["id"]), use_container_width=True)
+
+    if st.button("🗑️ 삭제하기"):
+        new_df = df2[df2["id"] != selected].drop(columns=["id"])
+        conn.update(worksheet="Sheet1", data=new_df)
+
+        st.success("삭제 완료!")
+        st.rerun()
