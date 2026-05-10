@@ -47,12 +47,12 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=True):
             "작성자": user,
             "메모": memo
         }])
-            updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.success(f"✅ 저장 완료! ({category})")
-            st.balloons()
-        else:
-            st.warning("금액을 입력해주세요.")
+        updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+        conn.update(worksheet="Sheet1", data=updated_df)
+        st.success(f"✅ 저장 완료! ({category})")
+        st.balloons()
+    else:
+        st.warning("금액을 입력해주세요.")
 
 # 2. 조회 섹션 (탭 기능)
 st.divider()
