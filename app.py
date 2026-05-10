@@ -29,10 +29,10 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=True):
 
     if st.button("내역 저장하기", use_container_width=True):
         if amount > 0:
-        existing_data = conn.read(
-            worksheet="Sheet1",
-            usecols=[0,1,2,3,4],
-            ttl=0
+            existing_data = conn.read(
+                worksheet="Sheet1",
+                usecols=[0,1,2,3,4],
+                ttl=0
         )
 
         if existing_data is None:
