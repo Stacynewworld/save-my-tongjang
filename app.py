@@ -29,16 +29,24 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=True):
 
     if st.button("내역 저장하기", use_container_width=True):
         if amount > 0:
-            existing_data = conn.read(worksheet="Sheet1", ttl=0)
-            if existing_data is None:
-                existing_data = pd.DataFrame()
-            new_row = pd.DataFrame([{
-                "날짜": date.strftime('%Y-%m-%d'),
-                "항목": category,
-                "금액": amount,
-                "작성자": user,
-                "메모": memo
-            }])
+        existing_data = conn.read(
+            worksheet="Sheet1",
+            usecols=[0,1,2,3,4],
+            ttl=0
+        )
+
+        if existing_data is None:
+            existing_data = pd.DataFrame(
+                columns=["날짜","항목","금액","작성자","메모"]
+            )
+
+        new_row = pd.DataFrame([{
+            "날짜": date.strftime('%Y-%m-%d'),
+            "항목": category,
+            "금액": amount,
+            "작성자": user,
+            "메모": memo
+        }])
             updated_df = pd.concat([existing_data, new_row], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
             st.success(f"✅ 저장 완료! ({category})")
