@@ -64,7 +64,7 @@ st.divider()
 st.markdown(f"### 📊 지출 리포트 (최근 3개월)")
 
 tab_yearly, tab_monthly, tab_all, tab_food, tab_life, tab_play = st.tabs([
-    "📅 연간 현황", "📈 월간 비중", "📋 전체 내역", "🍱 식비", "🏠 생필품", "🎸 여가"
+    "📈 연간 현황", "📅 월간 비중", "💳 전체 내역", "🍽️ 식비", "🏠 생필품", "💫 여가"
 ])
 
 # --- 📅 연간 현황 탭 (최근 1년 월별 총액) ---
