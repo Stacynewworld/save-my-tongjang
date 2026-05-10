@@ -1,51 +1,86 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
-# 앱 설정 및 제목
+# 앱 설정
 st.set_page_config(page_title="통장을 지켜라", layout="centered")
-st.title("🛡️ 통장을 지켜라")
+st.title("통장을 지켜라")
 st.subheader("승은 ❤️ 상준 알뜰 가계부")
 
+# 구글 시트 연결
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 # 1. 입력 섹션
-with st.container():
-    st.markdown("### ✍️ 오늘의 소비 내역")
-    
+with st.expander("➕ 새로운 지출 기록하기", expanded=True):
     col1, col2 = st.columns(2)
-    
     with col1:
         date = st.date_input("날짜", datetime.now())
-        # 요청하신 대로 식비 구분 및 주거비 통합 카테고리 적용
-        category = st.selectbox("항목", [
-            "식비-외식", 
-            "식비-장보기", 
-            "생필품", 
-            "취미", 
-            "기타"
-        ])
-    
+        # 카테고리 수정: 취미 -> 여가
+        category = st.selectbox("항목", ["식비-외식", "식비-장보기", "생필품", "여가", "기타"])
     with col2:
         amount = st.number_input("금액 (원)", min_value=0, step=100)
-        # 작성자 이름 변경: 승은, 상준
         user = st.radio("누가 썼나요?", ["승은", "상준"], horizontal=True)
+    
+    # 기타 항목일 때만 메모 입력칸 표시
+    memo = ""
+    if category == "기타":
+        memo = st.text_input("메모 (어디에 썼나요?)")
 
-    # 저장 버튼
     if st.button("내역 저장하기", use_container_width=True):
         if amount > 0:
-            # 추후 구글 스프레드시트 연동 시 실제 데이터가 전송되는 지점
-            st.success(f"✅ {user}님의 {category} {amount:,.0f}원 입력 완료!")
-            st.balloons() 
+            existing_data = conn.read(worksheet="Sheet1", usecols=, ttl=0)
+            new_row = pd.DataFrame([{
+                "날짜": date.strftime('%Y-%m-%d'),
+                "항목": category,
+                "금액": amount,
+                "작성자": user,
+                "메모": memo
+            }])
+            updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+            conn.update(worksheet="Sheet1", data=updated_df)
+            st.success(f"✅ 저장 완료! ({category})")
+            st.balloons()
         else:
-            st.warning("금액을 정확히 입력해주세요.")
+            st.warning("금액을 입력해주세요.")
 
-# 2. 요약 및 통계 섹션
+# 2. 조회 섹션 (탭 기능)
 st.divider()
-st.markdown("### 📊 이번 달 지출 현황")
+st.markdown("### 📊 지출 리포트")
 
-col_a, col_b = st.columns(2)
-with col_a:
-    st.metric(label="승은 지출", value="0원")
-with col_b:
-    st.metric(label="상준 지출", value="0원")
+# 시트 데이터 불러오기
+df = conn.read(worksheet="Sheet1", ttl=0)
+df['금액'] = pd.to_numeric(df['금액'], errors='coerce').fillna(0)
 
-st.info("'통장을 지켜라' 시트와 연결되면 실제 합계가 여기에 표시됩니다.")
+# 탭 생성
+tab_all, tab_food, tab_life, tab_play, tab_etc = st.tabs(["전체", "식비", "생필품", "여가", "기타"])
+
+with tab_all:
+    st.write(f"💰 **총 지출: {df['금액'].sum():,.0f}원**")
+    st.dataframe(df.sort_values("날짜", ascending=False), use_container_width=True)
+
+with tab_food:
+    food_df = df[df['항목'].str.contains("식비")]
+    eat_out = food_df[food_df['항목'] == "식비-외식"]['금액'].sum()
+    grocery = food_df[food_df['항목'] == "식비-장보기"]['금액'].sum()
+    
+    col_a, col_b = st.columns(2)
+    col_a.metric("외식비 합계", f"{eat_out:,.0f}원")
+    col_b.metric("장보기 합계", f"{grocery:,.0f}원")
+    st.write(f"🍱 **식비 총액: {(eat_out + grocery):,.0f}원**")
+    st.dataframe(food_df, use_container_width=True)
+
+with tab_life:
+    life_df = df[df['항목'] == "생필품"]
+    st.metric("생필품 합계", f"{life_df['금액'].sum():,.0f}원")
+    st.dataframe(life_df, use_container_width=True)
+
+with tab_play:
+    play_df = df[df['항목'] == "여가"]
+    st.metric("여가 합계", f"{play_df['금액'].sum():,.0f}원")
+    st.dataframe(play_df, use_container_width=True)
+
+with tab_etc:
+    etc_df = df[df['항목'] == "기타"]
+    st.metric("기타 합계", f"{etc_df['금액'].sum():,.0f}원")
+    st.dataframe(etc_df[["날짜", "금액", "작성자", "메모"]], use_container_width=True)
