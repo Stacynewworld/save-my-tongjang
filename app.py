@@ -3,6 +3,8 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
+SHEET_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZdPg0pkzYqF7aYE/edit"
+
 # 앱 설정
 st.set_page_config(page_title="통장을 지켜라", layout="centered")
 st.title("통장을 지켜라")
