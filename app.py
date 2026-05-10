@@ -11,45 +11,48 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZ
 # --- 앱 디자인 설정 ---
 st.set_page_config(page_title="몽이 & 냥이 가계부", page_icon="🐾", layout="centered")
 
-# [필독] GitHub 아이디와 저장소 이름으로 수정 필수!
-IMG_BASE_URL = "https://raw.githubusercontent.com/[너의아이디]/[저장소이름]/main/characters/"
+# [필독] 본인의 GitHub ID와 저장소 이름으로 꼭 수정해 주세요!
+IMG_BASE_URL = "https://github.com/Stacynewworld/save-my-tongjang/blob/main/Characters/"
 
+# 승은 님이 직접 수정하신 파일명들로 업데이트했습니다!
 MONG_IMAGES = {
-    "기본": IMG_BASE_URL + "img_7281.png",
-    "웃음": IMG_BASE_URL + "img_7282.png",
-    "생각": IMG_BASE_URL + "img_7283.png",
-    "걱정": IMG_BASE_URL + "img_7284.png",
-    "화남": IMG_BASE_URL + "img_7285.png",
+    "기본": IMG_BASE_URL + "mongi_basic.png",
+    "웃음": IMG_BASE_URL + "mongi_laugh.png",
+    "생각": IMG_BASE_URL + "mongi_think.png",
+    "걱정": IMG_BASE_URL + "mongi_worry.png",
+    "화남": IMG_BASE_URL + "mongi_angry.png",
 }
 
 NYANG_IMAGES = {
-    "기본": IMG_BASE_URL + "img_7286.png",
-    "신남": IMG_BASE_URL + "img_7287.png",
-    "감동": IMG_BASE_URL + "img_7288.png",
-    "걱정": IMG_BASE_URL + "img_7289.png",
+    "기본": IMG_BASE_URL + "nyangi_basic.png",
+    "신남": IMG_BASE_URL + "nyangi_excited.png",
+    "감동": IMG_BASE_URL + "nyangi_moved.png",
+    "걱정": IMG_BASE_URL + "nyangi_worry.png",
 }
 
 TOGETHER_IMAGES = {
-    "미소": IMG_BASE_URL + "img_7290.png",
-    "고마워": IMG_BASE_URL + "img_7291.png",
-    "잘됐다": IMG_BASE_URL + "img_7292.png",
+    "미소": IMG_BASE_URL + "together_smile.png",
+    "고마워": IMG_BASE_URL + "together_thanks.png",
+    "잘됐다": IMG_BASE_URL + "together_cheer.png",
 }
 
+# CSS (귀여운 폰트 및 주황색 포인트 디자인)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Nanum Gothic', sans-serif; color: #444; }
     .title-style { font-size: 2.5rem; font-weight: bold; color: #FF7F50; text-align: center; }
-    .stButton>button { border-radius: 30px; background-color: #FF7F50; color: white; font-weight: bold; width: 100%; height: 3rem; }
+    .stButton>button { border-radius: 30px; background-color: #FF7F50; color: white; font-weight: bold; width: 100%; height: 3rem; border: none; }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown("<p class='title-style'>🐾 몽이 & 냥이 가계부</p>", unsafe_allow_html=True)
 
-# --- 메인 이미지 (spec 에러 방지를 위해 숫자만 입력) ---
+# --- 메인 이미지 ---
 main_cols = st.columns(3)
 main_cols.image(TOGETHER_IMAGES["미소"], use_container_width=True)
 
+# 데이터 연결
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
@@ -66,13 +69,13 @@ filtered_df = df[df['날짜'] >= three_months_ago].sort_values("날짜", ascendi
 
 # --- 1. 입력 섹션 ---
 with st.expander("➕ 새로운 지출 기록하기", expanded=False):
-    # 여기서 리스트를 빼고 숫자 3만 넣었습니다! (spec 에러 완전 차단)
     input_cols = st.columns(3)
     
+    # 캐릭터 배치
     input_cols.image(MONG_IMAGES["생각"], use_container_width=True)
     input_cols.image(NYANG_IMAGES["기본"], use_container_width=True)
     
-    # 입력창들
+    # 입력창 배치 (가운데 칸)
     date = input_cols.date_input("날짜", datetime.now())
     category = input_cols.selectbox("항목", ["🍱식비-외식", "🛒식비-장보기", "🏠생필품", "🎸여가", "✨기타"])
     amount = input_cols.number_input("금액 (원)", min_value=0, step=100)
@@ -85,7 +88,7 @@ with st.expander("➕ 새로운 지출 기록하기", expanded=False):
             new_row = pd.DataFrame([{"날짜": date.strftime('%Y-%m-%d'), "항목": category[1:], "금액": amount, "작성자": user_name, "메모": memo}])
             updated_df = pd.concat([df, new_row], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
-            st.success("✅ 저장 완료!")
+            st.success("✅ 저장 완료! 몽이와 냥이가 기뻐해요!")
             st.rerun()
 
 # --- 2. 리포트 섹션 ---
@@ -111,6 +114,8 @@ with tab_monthly:
         cat_total = m_df.groupby('항목')['금액'].sum().reset_index()
         fig_p = px.pie(cat_total, values='금액', names='항목', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
         st.plotly_chart(fig_p, use_container_width=True)
+        st.write(f"💰 **이번 달 총 지출: {m_df['금액'].sum():,.0f}원**")
 
 with tab_all:
+    # 전체 데이터 편집 (삭제/수정 가능)
     st.data_editor(filtered_df, use_container_width=True, num_rows="dynamic")
