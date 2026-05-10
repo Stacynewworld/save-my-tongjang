@@ -59,7 +59,11 @@ st.divider()
 st.markdown("### 📊 지출 리포트")
 
 # 시트 데이터 불러오기
-df = conn.read(worksheet="Sheet1", ttl=0)
+df = conn.read(
+    worksheet="Sheet1",
+    usecols=[0,1,2,3,4],
+    ttl=0
+)
 df['금액'] = pd.to_numeric(df['금액'], errors='coerce').fillna(0)
 
 # 탭 생성
