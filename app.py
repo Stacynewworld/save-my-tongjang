@@ -3,7 +3,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
-SHEET_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZdPg0pkzYqF7aYE/edit"
+CSV_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZdPg0pkzYqF7aYE/gviz/tq?tqx=out:csv&sheet=Sheet1"
 
 # 앱 설정
 st.set_page_config(page_title="통장을 지켜라", layout="centered")
@@ -61,12 +61,7 @@ st.divider()
 st.markdown("### 📊 지출 리포트")
 
 # 시트 데이터 불러오기
-df = conn.read(
-    spreadsheet=SHEET_URL,
-    worksheet="Sheet1",
-    usecols=[0,1,2,3,4],
-    ttl=0
-)
+df = pd.read_csv(CSV_URL)
 df['금액'] = pd.to_numeric(df['금액'], errors='coerce').fillna(0)
 
 # 탭 생성
