@@ -6,10 +6,10 @@ from dateutil.relativedelta import relativedelta
 import plotly.express as px
 
 # -----------------------------
-# 앱 설정
+# 기본 설정
 # -----------------------------
 st.set_page_config(
-    page_title="통장을 지켜라",
+    page_title="몽이 & 냥이 가계부",
     page_icon="🐾",
     layout="centered"
 )
@@ -19,11 +19,9 @@ st.set_page_config(
 # -----------------------------
 CSV_URL = "https://docs.google.com/spreadsheets/d/10VceFHamxotfak1QoYfcZiBHl9PDZdPg0pkzYqF7aYE/gviz/tq?tqx=out:csv&sheet=Sheet1"
 
-# ⚠️ 반드시 raw.githubusercontent.com 사용 (중요)
 IMG_BASE_URL = "https://raw.githubusercontent.com/Stacynewworld/save-my-tongjang/main/Characters/"
 
 MONG_IMAGES = {
-    "기본": IMG_BASE_URL + "mongi_basic.png",
     "생각": IMG_BASE_URL + "mongi_think.png",
 }
 
@@ -36,7 +34,7 @@ TOGETHER_IMAGES = {
 }
 
 # -----------------------------
-# 스타일
+# 스타일 (모바일 안정)
 # -----------------------------
 st.markdown("""
 <style>
@@ -45,7 +43,7 @@ html, body {
 }
 .title {
     text-align:center;
-    font-size:1.8rem;
+    font-size:1.7rem;
     font-weight:bold;
     color:#FF7F50;
     margin-bottom:10px;
@@ -56,12 +54,12 @@ html, body {
 st.markdown("<div class='title'>🐾 몽이 & 냥이 가계부</div>", unsafe_allow_html=True)
 
 # -----------------------------
-# 메인 이미지 (정상 구조)
+# 메인 이미지 (작게 고정)
 # -----------------------------
 cols = st.columns(3)
 
 with cols[1]:
-    st.image(TOGETHER_IMAGES["미소"], use_container_width=True)
+    st.image(TOGETHER_IMAGES["미소"], width=90)
 
 # -----------------------------
 # 데이터 로딩
@@ -76,8 +74,7 @@ try:
 
     df["금액"] = pd.to_numeric(df["금액"], errors="coerce").fillna(0).astype(int)
 
-except Exception as e:
-    st.error(f"데이터 로딩 실패: {e}")
+except:
     df = pd.DataFrame(columns=["날짜","항목","금액","작성자","메모"])
 
 # -----------------------------
@@ -90,17 +87,17 @@ df = df.dropna(subset=["날짜"])
 filtered_df = df[df["날짜"] >= three_months_ago].sort_values("날짜", ascending=False)
 
 # -----------------------------
-# 입력 섹션
+# 입력 섹션 (캐릭터 작게 고정)
 # -----------------------------
 st.subheader("➕ 지출 입력")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.image(MONG_IMAGES["생각"], use_container_width=True)
+    st.image(MONG_IMAGES["생각"], width=70)   # ⭐ 핵심 수정
 
 with col3:
-    st.image(NYANG_IMAGES["기본"], use_container_width=True)
+    st.image(NYANG_IMAGES["기본"], width=70)  # ⭐ 핵심 수정
 
 with col2:
     date = st.date_input("날짜", datetime.now())
@@ -116,6 +113,9 @@ with col2:
 
     memo = st.text_input("메모")
 
+# -----------------------------
+# 저장
+# -----------------------------
 if st.button("💖 저장하기"):
     if amount <= 0:
         st.warning("금액을 입력해주세요")
