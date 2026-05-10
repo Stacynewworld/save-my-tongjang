@@ -60,7 +60,7 @@ st.markdown("### 📊 지출 리포트")
 
 # 시트 데이터 불러오기
 df = conn.read(
-    spreadsheet="Sheet1"
+    spreadsheet=SHEET_URL
     worksheet="Sheet1",
     usecols=[0,1,2,3,4],
     ttl=0
